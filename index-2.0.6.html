@@ -155,7 +155,7 @@ function renderRestorani(arr) {
 
 async function fetchViewport() {
   const b = map.getBounds();
-  const url = `http://localhost:5000/api/restorani/bbox` +
+  const url = `https://restoranbek1.onrender.com` +
               `?south=${b.getSouth()}&west=${b.getWest()}` +
               `&north=${b.getNorth()}&east=${b.getEast()}`;
   const lista = await (await fetch(url)).json();
