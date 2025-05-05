@@ -1,0 +1,638 @@
+
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+  <meta charset="UTF-8">
+  <title>Oceni Restoran u Beogradu</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+    #map { height: 400px; margin-bottom: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1);}
+    #review-form, #auth-form, #ocene-container {
+      background: white; padding: 15px; border-radius: 10px; max-width: 500px; margin: 10px auto;
+    }
+    input, textarea, select { width: 100%; margin: 5px 0 10px 0; padding: 8px; min-width: 120px; max-width: 180px; }
+    .btn { background: #007bff; color: white; border: none; padding: 8px 12px; cursor: pointer; margin-right: 5px; border-radius: 5px; }
+    #auth-box { text-align: right; margin-bottom: 10px; cursor: pointer; }
+    #search { width: 100%; max-width: 400px; margin: 10px auto; padding: 10px; font-size: 16px; display: block; border-radius: 8px; border: 1px solid #ccc; }
+    .legend { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
+    .legend div { margin-bottom: 5px; }
+    .color-box { display: inline-block; width: 12px; height: 12px; margin-right: 6px; }
+    #filters { max-width: 800px; margin: 10px auto; display: flex; gap: 10px; }
+  </style>
+</head>
+<body>
+
+
+
+
+<div id="auth-box" onclick="toggleAuthForm()">
+  <span id="user-info">Niste prijavljeni</span> <button id="logout-btn" class="btn" style="display:none;" onclick="logout()">Odjavi se</button>
+</div>
+
+<div id="auth-form" style="display:none;">
+  <h3>Prijava / Registracija</h3>
+  <input type="email" id="auth-email" placeholder="Email">
+  <input type="text" id="auth-phone" placeholder="Broj telefona">
+  <input type="password" id="auth-password" placeholder="Šifra (min 8 karaktera)">
+  <button class="btn" onclick="login()">Prijava</button>
+  <button class="btn" onclick="register()">Registracija</button>
+</div>
+
+<input type="text" id="search" placeholder="Pretraži restoran..." oninput="pretraziRestoran()">
+
+
+<div id="filters">
+  <select id="filter-kategorija" onchange="primeniFilter()">
+    <option value="sve">Sve kategorije</option>
+    <option value="jeftin">Jeftini</option>
+    <option value="srednji">Srednje skupi</option>
+    <option value="skup">Skupi</option>
+  </select>
+
+  <select id="filter-rejting" onchange="primeniFilter()">
+    <option value="0">Svi rejtinzi</option>
+    <option value="3">3+</option>
+    <option value="4">4+</option>
+    <option value="4.5">4.5+</option>
+    <option value="5">5</option>
+  </select>
+
+  <select id="filter-vrsta" onchange="primeniFilter()">
+    <option value="sve">Sve kuhinje</option>
+    <option value="domaca">Domaća</option>
+    <option value="italijanska">Italijanska</option>
+    <option value="americka">Američka</option>
+    <option value="bliski">Bliski Istok</option>
+    <option value="indijska">Indijska</option>
+    <option value="azijska">Azijska</option>
+    <option value="internacionalna">Internacionalna</option>
+    <option value="meksicka">Meksička</option>
+    <option value="ostalo">Ostalo</option>
+  </select>
+
+  <select id="filter-region" onchange="primeniFilter()">
+    <option value="svi">Svi regioni</option>
+    <option value="novi_beograd">Novi Beograd</option>
+    <option value="zemun">Zemun</option>
+    <option value="stari_grad">Stari Grad</option>
+    <option value="palilula">Palilula</option>
+    <option value="vracar">Vračar</option>
+    <option value="savski_venac">Savski Venac</option>
+  </select>
+</div>
+
+
+<div id="map"></div>
+
+<button class="btn" id="btn-novi-restoran" style="display:none;" onclick="prikaziFormuNovogRestorana()">Novi restoran</button>
+
+<div id="novi-restoran-kontejner" style="display:none;">
+  <h3>Dodaj novi restoran</h3>
+  <input type="text" id="novi-ime" placeholder="Ime restorana">
+  <input type="text" id="novi-adresa" placeholder="Adresa (ulica, broj, grad)">
+  <select id="novi-kategorija">
+    <option value="jeftin">Jeftini</option>
+    <option value="srednji">Srednje skupi</option>
+    <option value="skup">Skupi</option>
+  </select>
+  <select id="novi-vrsta">
+    <option value="domaca">Domaća</option>
+    <option value="italijanska">Italijanska</option>
+    <option value="americka">Američka</option>
+    <option value="bliski">Bliski Istok</option>
+    <option value="indijska">Indijska</option>
+    <option value="azijska">Azijska</option>
+    <option value="internacionalna">Internacionalna</option>
+    <option value="meksicka">Meksička</option>
+    <option value="ostalo">Ostalo</option>
+  </select>
+  <select id="novi-region">
+    <option value="novi_beograd">Novi Beograd</option>
+    <option value="zemun">Zemun</option>
+    <option value="stari_grad">Stari Grad</option>
+    <option value="palilula">Palilula</option>
+    <option value="vracar">Vračar</option>
+    <option value="savski_venac">Savski Venac</option>
+  </select>
+  <button class="btn" onclick="dodajNoviRestoran()">Dodaj</button>
+</div>
+
+
+<div id="review-form" style="display:none;">
+  <h3>Oceni restoran: <span id="restoran-ime"></span></h3>
+  <input type="number" id="ocena" placeholder="Ocena (1-5)" min="1" max="5">
+  <textarea id="komentar" placeholder="Komentar"></textarea>
+  <button class="btn" onclick="posaljiOcenu()">Pošalji ocenu</button>
+</div>
+
+<div id="ocene-container" style="display:none;">
+  <h3>Ocene za <span id="ocene-restoran-ime"></span></h3>
+  <div id="ocene-lista"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+const map = L.map('map').setView([44.8125, 20.4612], 14);
+// === Klaster + marker-handling ===
+const cluster = L.markerClusterGroup({ maxClusterRadius: 40 });
+map.addLayer(cluster);
+
+function renderRestorani(arr) {
+  cluster.clearLayers();
+  arr.forEach(r => {
+    const icon = L.icon({
+      iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${getColorByCategory(r.kategorija)}.png`,
+      iconSize: [25,41], iconAnchor:[12,41], popupAnchor:[1,-34],
+      shadowUrl:'https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png'
+    });
+    const m = L.marker([r.loc.coordinates[1], r.loc.coordinates[0]], { icon });
+    m.restoranObjekat = r;
+    m.bindPopup(getPopupContent(r.ime));
+    cluster.addLayer(m);
+  });
+}
+
+async function fetchViewport() {
+  const b = map.getBounds();
+  const url = `http://localhost:5000/api/restorani/bbox` +
+              `?south=${b.getSouth()}&west=${b.getWest()}` +
+              `&north=${b.getNorth()}&east=${b.getEast()}`;
+  const lista = await (await fetch(url)).json();
+  renderRestorani(lista);
+}
+
+// prvi poziv + debounce na pan/zoom
+let timer;
+map.whenReady(fetchViewport);
+map.on('moveend zoomend', () => {
+  clearTimeout(timer);
+  timer = setTimeout(fetchViewport, 30);
+});
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+
+let restorani = [];
+
+let markers = [], ocene = {}, currentUser = null;
+
+function getColorByCategory(cat) {
+  if (cat === "jeftin") return "green";
+  if (cat === "srednji") return "blue";
+  if (cat === "skup") return "red";
+  return "gray";
+}
+
+function izracunajProsek(ime) {
+  const lista = ocene[ime] || [];
+  if (lista.length === 0) return null;
+  const zbir = lista.reduce((sum, o) => sum + parseFloat(o.ocena), 0);
+  return zbir / lista.length;
+}
+
+// Kreiranje markera
+
+
+// Legenda
+const legenda = L.control({position: 'bottomright'});
+legenda.onAdd = function (map) {
+  const div = L.DomUtil.create('div', 'legend');
+  div.innerHTML += '<div><span class="color-box" style="background:green"></span> Jeftini</div>';
+  div.innerHTML += '<div><span class="color-box" style="background:blue"></span> Srednje skupi</div>';
+  div.innerHTML += '<div><span class="color-box" style="background:red"></span> Skupi</div>';
+  return div;
+};
+legenda.addTo(map);
+
+function getPopupContent(ime) {
+  const prosek = izracunajProsek(ime);
+  const prikaz = prosek ? prosek.toFixed(1) + "/5" : "Nema još ocena";
+  return '<b>' + ime + '</b> (' + prikaz + ')<br>' +
+    '<button class="btn" onclick="oceniRestoran(\'' + ime + '\')">Oceni</button>' +
+    '<button class="btn" onclick="prikaziOcene(\'' + ime + '\')">Prikaži ocene</button>';
+}
+
+
+function primeniFilter() {
+  const kategorija = document.getElementById('filter-kategorija').value;
+  const minRejting = parseFloat(document.getElementById('filter-rejting').value);
+  const vrsta = document.getElementById('filter-vrsta').value;
+  const region = document.getElementById('filter-region').value;
+
+  markers.forEach(marker => {
+    const restoran = marker.restoranObjekat;
+    const prosek = izracunajProsek(restoran.ime) || 0;
+
+    const katMatch = kategorija === "sve" || restoran.kategorija === kategorija;
+    const rejtingMatch = prosek >= minRejting;
+    const vrstaMatch = vrsta === "sve" || restoran.vrsta === vrsta;
+    const regionMatch = region === "svi" || restoran.region === region;
+
+    if (katMatch && rejtingMatch && vrstaMatch && regionMatch) {
+      marker.setOpacity(1);
+      marker.addTo(map);
+    } else {
+      map.removeLayer(marker);
+    }
+  });
+}
+
+function pretraziRestoran() {
+  const query = document.getElementById('search').value.toLowerCase();
+  markers.forEach(marker => {
+    if (marker.restoranIme.toLowerCase().includes(query)) {
+      marker.setOpacity(1);
+      marker.openPopup();
+      map.setView(marker.getLatLng(), 16);
+    } else {
+      marker.setOpacity(0.3);
+    }
+  });
+}
+
+function toggleAuthForm() {
+  const f = document.getElementById("auth-form");
+  f.style.display = f.style.display === "none" ? "block" : "none";
+}
+
+function updateUserInfo() {
+  const user = localStorage.getItem("loggedInUser");
+  if (user) {
+    currentUser = user;
+    document.getElementById("user-info").innerText = "Prijavljeni kao: " + user;
+    document.getElementById("auth-form").style.display = "none";
+    document.getElementById("btn-novi-restoran").style.display = "inline-block";
+  } else {
+    currentUser = null;
+    document.getElementById("user-info").innerText = "Niste prijavljeni";
+  }
+}
+
+function register() {
+  const email = document.getElementById("auth-email").value.trim();
+  const phone = document.getElementById("auth-phone").value.trim();
+  const pass = document.getElementById("auth-password").value.trim();
+  if (!email || !phone || !pass) return alert("Unesite sve podatke.");
+  if (pass.length < 8) return alert("Šifra mora imati najmanje 8 karaktera.");
+  const users = JSON.parse(localStorage.getItem("users") || "{}");
+  if (users[email]) return alert("Nalog sa tim emailom već postoji.");
+  users[email] = { password: pass, phone: phone };
+  localStorage.setItem("users", JSON.stringify(users));
+  localStorage.setItem("loggedInUser", email);
+  updateUserInfo();
+  alert("Registracija uspešna.");
+}
+
+function login() {
+  const email = document.getElementById("auth-email").value.trim();
+  const pass = document.getElementById("auth-password").value.trim();
+  const users = JSON.parse(localStorage.getItem("users") || "{}");
+  if (users[email] && users[email].password === pass) {
+    localStorage.setItem("loggedInUser", email);
+    updateUserInfo();
+    alert("Prijava uspešna.");
+  } else {
+    alert("Neispravni podaci.");
+  }
+}
+
+function oceniRestoran(ime) {
+  if (!currentUser) return alert("Morate biti prijavljeni.");
+  document.getElementById("restoran-ime").innerText = ime;
+  document.getElementById("review-form").style.display = "block";
+  document.getElementById("review-form").scrollIntoView();
+}
+
+function posaljiOcenu() {
+  const ime = document.getElementById("restoran-ime").innerText;
+  const ocena = document.getElementById("ocena").value;
+  const komentar = document.getElementById("komentar").value;
+  if (!ocene[ime]) ocene[ime] = [];
+  ocene[ime].push({ korisnik: currentUser, ocena, komentar });
+  alert("Ocena sačuvana.");
+  document.getElementById("review-form").style.display = "none";
+  primeniFilter();
+}
+
+function prikaziOcene(ime) {
+  const lista = ocene[ime] || [];
+  document.getElementById("ocene-restoran-ime").innerText = ime;
+  const c = document.getElementById("ocene-lista");
+  c.innerHTML = lista.map(o => `<b>${o.korisnik}</b>: ${o.ocena}/5<br><i>${o.komentar}</i><hr>`).join('');
+  document.getElementById("ocene-container").style.display = "block";
+  document.getElementById("ocene-container").scrollIntoView();
+}
+
+window.onload = updateUserInfo;
+
+
+function prikaziFormuNovogRestorana() {
+  const f = document.getElementById("novi-restoran-kontejner");
+  f.style.display = f.style.display === "none" ? "block" : "none";
+}
+
+
+
+async function dodajNoviRestoran() {
+  const ime = document.getElementById("novi-ime").value.trim();
+  const adresa = document.getElementById("novi-adresa").value.trim();
+  const kategorija = document.getElementById("novi-kategorija").value;
+  const vrsta = document.getElementById("novi-vrsta").value;
+  const region = document.getElementById("novi-region").value;
+
+  if (!ime || !adresa) return alert("Unesite ime i adresu.");
+
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(adresa)}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  if (!data.length) return alert("Adresa nije pronađena.");
+
+  const lat = parseFloat(data[0].lat);
+  const lon = parseFloat(data[0].lon);
+
+  const novi = {
+  ime,
+  adresa,
+  lat,
+  lon,
+  loc: {                      // ★ NOVO polje za GeoJSON tačku
+    type: 'Point',
+    coordinates: [lon, lat]   //   [longitude, latitude]
+  },
+  kategorija,
+  vrsta,
+  region
+};
+
+  try {
+    const backendRes = await fetch('http://localhost:5000/api/restorani', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(novi)
+    });
+
+    if (!backendRes.ok) {
+      const errData = await backendRes.json();
+      throw new Error(errData.error || 'Greška prilikom upisa.');
+    }
+
+    restorani.push(novi);
+
+    const icon = L.icon({
+      iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${getColorByCategory(kategorija)}.png`,
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png',
+      shadowSize: [41, 41]
+    });
+
+    const marker = L.marker([lat, lon], { icon }).addTo(map);
+    marker.restoranIme = ime;
+    marker.restoranKategorija = kategorija;
+    marker.restoranObjekat = novi;
+    marker.bindPopup(getPopupContent(ime));
+    markers.push(marker);
+
+    alert("Restoran dodat!");
+    document.getElementById("novi-restoran-kontejner").style.display = "none";
+  } catch (err) {
+    console.error("Greška pri dodavanju restorana:", err);
+    alert("Došlo je do greške pri dodavanju restorana: " + err.message);
+  }
+}
+
+
+
+
+
+
+
+async function ucitajRestorane() {
+  try {
+    const res = await fetch('http://localhost:5000/api/restorani');
+    restorani = await res.json();
+
+    restorani.forEach(restoran => {
+      const icon = L.icon({
+        iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${getColorByCategory(restoran.kategorija)}.png`,
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png',
+        shadowSize: [41, 41]
+      });
+
+      const marker = L.marker([restoran.lat, restoran.lon], { icon }).addTo(map);
+      marker.restoranIme = restoran.ime;
+      marker.restoranKategorija = restoran.kategorija;
+      marker.restoranObjekat = restoran;
+      marker.bindPopup(getPopupContent(restoran.ime));
+      markers.push(marker);
+    });
+
+    primeniFilter(); // Apply filter after loading markers
+  } catch (err) {
+    console.error("Greška pri učitavanju restorana:", err);
+  }
+}
+
+
+
+
+// primer-funkcije.js
+
+const API_URL = 'http://localhost:5000'; // ili tvoj online render URL
+
+// Registracija
+async function register() {
+  const email = document.getElementById("auth-email").value.trim();
+  const phone = document.getElementById("auth-phone").value.trim();
+  const pass = document.getElementById("auth-password").value.trim();
+
+  if (!email || !phone || !pass) return alert("Unesite sve podatke.");
+
+  const res = await fetch(`${API_URL}/api/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password: pass, phone })
+  });
+
+  const data = await res.json();
+  alert(data.message || data.error);
+  if (res.ok) {
+    localStorage.setItem("loggedInUser", email);
+    updateUserInfo();
+  }
+}
+
+// Prijava
+async function login() {
+  const email = document.getElementById("auth-email").value.trim();
+  const pass = document.getElementById("auth-password").value.trim();
+
+  const res = await fetch(`${API_URL}/api/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password: pass })
+  });
+
+  const data = await res.json();
+  alert(data.message || data.error);
+  if (res.ok) {
+    localStorage.setItem("loggedInUser", email);
+    updateUserInfo();
+  }
+}
+
+// Slanje ocene
+async function posaljiOcenu() {
+  const ime = document.getElementById("restoran-ime").innerText;
+  const ocena = document.getElementById("ocena").value;
+  const komentar = document.getElementById("komentar").value;
+  const korisnik = localStorage.getItem("loggedInUser");
+
+  if (!korisnik) return alert("Morate biti prijavljeni.");
+
+  const res = await fetch(`${API_URL}/api/review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ restoranIme: ime, korisnik, ocena, komentar })
+  });
+
+  const data = await res.json();
+  alert(data.message || data.error);
+  if (res.ok) {
+    document.getElementById("review-form").style.display = "none";
+    primeniFilter();
+  }
+}
+
+// Dohvati ocene za restoran
+async function prikaziOcene(ime) {
+  const res = await fetch(`${API_URL}/api/reviews/${encodeURIComponent(ime)}`);
+  const lista = await res.json();
+  document.getElementById("ocene-restoran-ime").innerText = ime;
+  const c = document.getElementById("ocene-lista");
+  c.innerHTML = lista.length
+    ? lista.map(o => `<b>${o.korisnik}</b>: ${o.ocena}/5<br><i>${o.komentar}</i><hr>`).join('')
+    : "<i>Nema ocena.</i>";
+  document.getElementById("ocene-container").style.display = "block";
+  document.getElementById("ocene-container").scrollIntoView();
+}
+</script>
+
+
+<script>
+const translations = {
+  sr: {
+    login: "Prijava",
+    register: "Registracija",
+    email: "Email",
+    phone: "Broj telefona",
+    password: "Šifra (min 8 karaktera)",
+    search: "Pretraži restoran...",
+    allCategories: "Sve kategorije",
+    cheap: "Jeftini",
+    medium: "Srednje skupi",
+    expensive: "Skupi",
+    allRatings: "Svi rejtinzi",
+    submitReview: "Pošalji ocenu",
+    logout: "Odjavi se",
+    notLoggedIn: "Niste prijavljeni",
+    loggedInAs: "Prijavljeni kao:"
+  },
+  en: {
+    login: "Login",
+    register: "Register",
+    email: "Email",
+    phone: "Phone",
+    password: "Password (min 8 characters)",
+    search: "Search restaurant...",
+    allCategories: "All categories",
+    cheap: "Cheap",
+    medium: "Moderately expensive",
+    expensive: "Expensive",
+    allRatings: "All ratings",
+    submitReview: "Submit review",
+    logout: "Log out",
+    notLoggedIn: "Not logged in",
+    loggedInAs: "Logged in as:"
+  }
+};
+
+let currentLang = 'sr';
+
+function toggleLanguage() {
+  currentLang = currentLang === 'sr' ? 'en' : 'sr';
+  document.getElementById('lang-btn').innerText = currentLang === 'sr' ? 'English' : 'Srpski';
+  applyTranslations();
+  updateUserInfo();
+}
+
+function applyTranslations() {
+  const t = translations[currentLang];
+  document.getElementById('page-title').innerText = t.title;
+  document.title = t.title;
+  document.getElementById('login-btn').innerText = t.login;
+  document.getElementById('register-btn').innerText = t.register;
+  const legend = document.querySelector('.legend');
+  if (legend) {
+    legend.innerHTML = `
+      <div><span class="color-box" style="background:green"></span> ${t.cheap}</div>
+      <div><span class="color-box" style="background:blue"></span> ${t.medium}</div>
+      <div><span class="color-box" style="background:red"></span> ${t.expensive}</div>
+    `;
+  }
+
+  document.getElementById('auth-email').placeholder = t.email;
+  document.getElementById('auth-phone').placeholder = t.phone;
+  document.getElementById('auth-password').placeholder = t.password;
+  document.getElementById('search').placeholder = t.search;
+  document.querySelector('#filter-kategorija option[value="sve"]').innerText = t.allCategories;
+  document.querySelector('#filter-kategorija option[value="jeftin"]').innerText = t.cheap;
+  document.querySelector('#filter-kategorija option[value="srednji"]').innerText = t.medium;
+  document.querySelector('#filter-kategorija option[value="skup"]').innerText = t.expensive;
+  document.querySelector('#filter-rejting option[value="0"]').innerText = t.allRatings;
+  const btnSubmit = document.querySelector('button[onclick="posaljiOcenu()"]');
+  if (btnSubmit) btnSubmit.innerText = t.submitReview;
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) logoutBtn.innerText = t.logout;
+}
+
+function updateUserInfo() {
+  const t = translations[currentLang];
+  const user = localStorage.getItem("loggedInUser");
+  if (user) {
+    document.getElementById("user-info").innerText = t.loggedInAs + " " + user;
+    document.getElementById("auth-form").style.display = "none";
+    document.getElementById("btn-novi-restoran").style.display = "inline-block";
+    document.getElementById("logout-btn").style.display = "inline-block";
+    document.getElementById("btn-novi-restoran").style.display = "inline-block";
+  } else {
+    document.getElementById("user-info").innerText = t.notLoggedIn;
+    document.getElementById("logout-btn").style.display = "none";
+    document.getElementById("btn-novi-restoran").style.display = "none";
+  }
+}
+
+function logout() {
+  localStorage.removeItem("loggedInUser");
+  updateUserInfo();
+}
+</script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    if (typeof updateUserInfo === 'function') updateUserInfo();
+    if (typeof ucitajRestorane === 'function') ucitajRestorane();
+  } catch(e) {
+    console.error('Auto‑init error:', e);
+  }
+});
+</script>
+</body>
+
+</html>
