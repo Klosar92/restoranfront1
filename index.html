@@ -365,7 +365,7 @@ async function dodajNoviRestoran() {
 };
 
   try {
-    const backendRes = await fetch('http://localhost:5000/api/restorani', {
+    const backendRes = await fetch('https://restoranbek1.onrender.com', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(novi)
@@ -410,7 +410,7 @@ async function dodajNoviRestoran() {
 
 async function ucitajRestorane() {
   try {
-    const res = await fetch('http://localhost:5000/api/restorani');
+    const res = await fetch('https://restoranbek1.onrender.com');
     restorani = await res.json();
 
     restorani.forEach(restoran => {
@@ -442,7 +442,7 @@ async function ucitajRestorane() {
 
 // primer-funkcije.js
 
-const API_URL = 'http://localhost:5000'; // ili tvoj online render URL
+const API_URL = 'https://restoranbek1.onrender.com'; // ili tvoj online render URL
 
 // Registracija
 async function register() {
