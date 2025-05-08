@@ -433,41 +433,16 @@ async function dodajNoviRestoran() {
 
 
 
-async function ucitajRestorane() {
+async function ucitajRestorane () {
   try {
-    const res = await fetch('https://restoranbek1.onrender.com/api/restorani');
+    const res   = await fetch('https://restoranbek1.onrender.com/api/restorani');
     if (!res.ok) throw new Error(res.statusText);
-
-    // parse exactly once
-    const data = await res.json();
-
-    // use it for rendering
-    renderRestorani(data);
-
-    // and store it for filtering/searching
-    restorani = data;
-
+    restorani   = await res.json();     // single json() call
+    renderRestorani(restorani);         // draw markers on the cluster
   } catch (err) {
-    console.error("Greška pri učitavanju restorana:", err);
+    console.error('Greška pri učitavanju restorana:', err);
   }
-
-    restorani.forEach(restoran => {
-      const icon = L.icon({
-        iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${getColorByCategory(restoran.kategorija)}.png`,
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png',
-        shadowSize: [41, 41]
-      });
-
-      const marker = L.marker([restoran.lat, restoran.lon], { icon }).addTo(map);
-      marker.restoranIme = restoran.ime;
-      marker.restoranKategorija = restoran.kategorija;
-      marker.restoranObjekat = restoran;
-      marker.bindPopup(getPopupContent(restoran.ime));
-      markers.push(marker);
-    });
+}
 
     primeniFilter(); // Apply filter after loading markers
   } 
