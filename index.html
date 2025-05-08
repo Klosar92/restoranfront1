@@ -152,7 +152,8 @@
 
 
 <script>
-  
+
+let markers   = [];  
 let restorani = [];
 let ocene     = {};
 let currentUser = null;
@@ -166,18 +167,29 @@ map.addLayer(cluster);
 
 function renderRestorani(arr) {
   cluster.clearLayers();
+
   arr.forEach(r => {
+    // ➜ ако документ *има* lat / lon поља – користи њих,
+    //    иначе покушава GeoJSON loc.coordinates
+    const lat = r.lat ?? r.loc?.coordinates?.[1];
+    const lon = r.lon ?? r.loc?.coordinates?.[0];
+    if (lat == null || lon == null) return;   // прескочи ако и даље фали
+
     const icon = L.icon({
       iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${getColorByCategory(r.kategorija)}.png`,
-      iconSize: [25,41], iconAnchor:[12,41], popupAnchor:[1,-34],
-      shadowUrl:'https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png'
+      iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
+      shadowUrl:'https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png',
+      shadowSize: [41, 41]
     });
-    const m = L.marker([r.loc.coordinates[1], r.loc.coordinates[0]], { icon });
+
+    const m = L.marker([lat, lon], { icon });
     m.restoranObjekat = r;
     m.bindPopup(getPopupContent(r.ime));
     cluster.addLayer(m);
+    markers.push(m);          // ← запамти у markers
   });
 }
+
 
 async function fetchViewport() {
   const b = map.getBounds();
