@@ -156,7 +156,8 @@
 let restorani = [];
 let ocene     = {};
 let currentUser = null;
-const map = L.map('map').setView([44.8125, 20.4612], maxZoom: 19);
+const map = L.map('map', { maxZoom: 19 })
+             .setView([44.8125, 20.4612], 14);
   const cluster = L.markerClusterGroup({ maxClusterRadius: 40 });
 map.addLayer(cluster);
 
