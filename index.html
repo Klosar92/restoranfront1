@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
 
@@ -166,7 +166,7 @@ function renderRestorani(arr) {
 
 async function fetchViewport() {
   const b = map.getBounds();
-  const url = `https://restoranbek1.onrender.com` +
+  const url = `https://restoranbek1.onrender.com/api/restorani/bbox` +
               `?south=${b.getSouth()}&west=${b.getWest()}` +
               `&north=${b.getNorth()}&east=${b.getEast()}`;
   const lista = await (await fetch(url)).json();
@@ -421,7 +421,7 @@ async function dodajNoviRestoran() {
 
 async function ucitajRestorane() {
   try {
-    const res = await fetch('https://restoranbek1.onrender.com');
+    const res = await fetch('https://restoranbek1.onrender.com/api/restorani');
     restorani = await res.json();
 
     restorani.forEach(restoran => {
