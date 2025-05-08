@@ -376,7 +376,7 @@ async function dodajNoviRestoran() {
 };
 
   try {
-    const backendRes = await fetch('https://restoranbek1.onrender.com', {
+    const backendRes = await fetch('https://restoranbek1.onrender.com/api/restorani', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(novi)
@@ -422,7 +422,20 @@ async function dodajNoviRestoran() {
 async function ucitajRestorane() {
   try {
     const res = await fetch('https://restoranbek1.onrender.com/api/restorani');
-    restorani = await res.json();
+    if (!res.ok) throw new Error(res.statusText);
+
+    // parse exactly once
+    const data = await res.json();
+
+    // use it for rendering
+    renderRestorani(data);
+
+    // and store it for filtering/searching
+    restorani = data;
+
+  } catch (err) {
+    console.error("Greška pri učitavanju restorana:", err);
+  }
 
     restorani.forEach(restoran => {
       const icon = L.icon({
