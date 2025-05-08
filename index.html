@@ -152,11 +152,14 @@
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
+  let map, cluster;
+let restorani = [];
+let ocene     = {};
+let currentUser = null;
 const map = L.map('map').setView([44.8125, 20.4612], 14);
   const cluster = L.markerClusterGroup({ maxClusterRadius: 40 });
 map.addLayer(cluster);
-let restorani = [];
-let markers = [], ocene = {}, currentUser = null;
+
 // === Klaster + marker-handling ===
 
 
